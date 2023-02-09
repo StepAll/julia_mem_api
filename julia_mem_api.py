@@ -395,6 +395,10 @@ def get_image(mem_type):
     return None
 
 
+@app.get("/")
+def root():
+    return {'message':'Hello Julia!'}
+
 #localstart:
 
 # docker run --rm -p 8888:8888 -p 8501:8501 -p 8000:8000 -v ${pwd}:/work --name python38jupyter python38jupyter
