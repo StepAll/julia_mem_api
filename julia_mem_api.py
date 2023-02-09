@@ -12,9 +12,6 @@ import apiclient.discovery
 from oauth2client.service_account import ServiceAccountCredentials
 from googleapiclient.http import MediaIoBaseDownload
 
-from dotenv import load_dotenv
-load_dotenv()
-
 # Importing the PIL library
 from PIL import Image
 from PIL import ImageDraw
@@ -406,5 +403,5 @@ def get_image(mem_type):
 # uvicorn julia_mem_api:app --host 0.0.0.0 --port 8000 --reload
 
 
-#deploy on render
-#with github
+# deploy on render  with github
+# https://github.com/bennylope/python-deployments-hello-world
