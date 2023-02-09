@@ -19,6 +19,9 @@ from PIL import ImageFont
 
 from fastapi import FastAPI, Response
 
+# from dotenv import load_dotenv
+# load_dotenv()
+
 # google api
 def get_google_service(service_account_json:str, api:str='sheets'):
     """return connection to google api
@@ -369,9 +372,11 @@ app = FastAPI()
 
 DATETIME_FORMAT = '%Y/%m/%d %H:%M'
 SERVICE_ACCOUNT_JSON = os.getenv('JULIA_MEM_GOOGLE_SERVICE_ACCOUNT_KEY_JSON', None)
+# SERVICE_ACCOUNT_JSON = os.environ.get('JULIA_MEM_GOOGLE_SERVICE_ACCOUNT_KEY_JSON', None)
 
 # google spread sheet with phrases
 SPREADSHEET_ID = os.getenv('JULIA_MEM_SPREADSHEET_ID', None)
+# SPREADSHEET_ID = os.environ.get('JULIA_MEM_SPREADSHEET_ID', None)
 PHRASES_PAGE_NAME = 'phrases'
 PHRASES_SHOW_DATETIME_COLUMN = 'E'
 PHOTOS_PAGE_NAME = 'photos'
@@ -382,6 +387,7 @@ RESERVED_HEADER_ROWS = 1
 
 # google drive folder with photos 
 JULIA_PHOTOS_FOLDER_ID = os.getenv('JULIA_MEM_PHOTOS_FOLDER_ID', None)
+# JULIA_PHOTOS_FOLDER_ID = os.environ.get('JULIA_MEM_PHOTOS_FOLDER_ID', None)
 
 @app.get("/mem/{mem_type}",
     responses = {200: {"content": {"image/png": {}}}},
