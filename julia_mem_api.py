@@ -368,10 +368,10 @@ app = FastAPI()
 
 
 DATETIME_FORMAT = '%Y/%m/%d %H:%M'
-SERVICE_ACCOUNT_JSON = os.environ.get('JULIA_MEM_GOOGLE_SERVICE_ACCOUNT_KEY_JSON', None)
+SERVICE_ACCOUNT_JSON = os.getenv('JULIA_MEM_GOOGLE_SERVICE_ACCOUNT_KEY_JSON', None)
 
 # google spread sheet with phrases
-SPREADSHEET_ID = os.environ.get('JULIA_MEM_SPREADSHEET_ID', None)
+SPREADSHEET_ID = os.getenv('JULIA_MEM_SPREADSHEET_ID', None)
 PHRASES_PAGE_NAME = 'phrases'
 PHRASES_SHOW_DATETIME_COLUMN = 'E'
 PHOTOS_PAGE_NAME = 'photos'
@@ -381,7 +381,7 @@ PHOTOS_PAGE_LAST_COLUMN = "B"
 RESERVED_HEADER_ROWS = 1
 
 # google drive folder with photos 
-JULIA_PHOTOS_FOLDER_ID = os.environ.get('JULIA_MEM_PHOTOS_FOLDER_ID', None)
+JULIA_PHOTOS_FOLDER_ID = os.getenv('JULIA_MEM_PHOTOS_FOLDER_ID', None)
 
 @app.get("/mem/{mem_type}",
     responses = {200: {"content": {"image/png": {}}}},
@@ -403,7 +403,7 @@ def root():
 
 # docker run --rm -p 8888:8888 -p 8501:8501 -p 8000:8000 -v ${pwd}:/work --name python38jupyter python38jupyter
 # docker exec -it python38jupyter bash
-# cd family_telebot
+# cd julia_mem_api
 # uvicorn julia_mem_api:app --host 0.0.0.0 --port 8000 --reload
 
 
