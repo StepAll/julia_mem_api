@@ -387,8 +387,36 @@ RESERVED_HEADER_ROWS = 1
 JULIA_PHOTOS_FOLDER_ID = os.getenv('JULIA_MEM_PHOTOS_FOLDER_ID', None)
 
 
-
+from typing import Union
 from enum import Enum
+from fastapi import Depends, FastAPI
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+class User(BaseModel):
+    username: str
+    email: Union[str, None] = None
+    full_name: Union[str, None] = None
+    disabled: Union[bool, None] = None
+
+def fake_decode_token(token):
+    return User(
+        username=token + "fakedecoded", email="john@example.com", full_name="John Doe"
+    )
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    user = fake_decode_token(token)
+    return user
+
+@app.get("/users/me")
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+
+
 
 class MemType(str, Enum):
     new = 'new'
@@ -399,7 +427,7 @@ class MemType(str, Enum):
     responses = {200: {"content": {"image/png": {}}}},
     response_class=Response
     )
-async def get_image(mem_type:MemType):
+async def get_image(mem_type:MemType, token:str = Depends(oauth2_scheme)):
     mem = mem_to_api(mem_type=mem_type)
     if mem:
         image_bytes = img2bin(mem)
@@ -408,15 +436,16 @@ async def get_image(mem_type:MemType):
 
 
 @app.get("/")
-def root():
-    return {'message':'Helloooo, Julia!'}
+def root(token:str = Depends(oauth2_scheme)):
+    # return {'message':'Helloooo, Julia!'}
+    return {'message':token}
 
 #localstart:
 
 # docker run --rm -p 8888:8888 -p 8501:8501 -p 8000:8000 -v ${pwd}:/work --name python38jupyter python38jupyter
 # docker exec -it python38jupyter bash
 # cd julia_mem_api
-# uvicorn julia_mem_api:app --host 0.0.0.0 --port 8000 --reload
+# uvicorn julia_mem_api token:app --host 0.0.0.0 --port 8000 --reload
 
 
 # deploy on render  with github
@@ -425,3 +454,5 @@ def root():
 
 # deploy to Fly.io
 # https://dev.to/denvercoder1/hosting-a-python-discord-bot-for-free-with-flyio-3k19
+# cd julia_mem_api
+# flyctl deploy
