@@ -19,8 +19,8 @@ from PIL import ImageFont
 
 from fastapi import FastAPI, Response
 
-from dotenv import load_dotenv
-load_dotenv()
+# from dotenv import load_dotenv
+# load_dotenv()
 
 # google api
 def get_google_service(service_account_json:str, api:str='sheets'):
