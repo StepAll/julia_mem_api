@@ -19,8 +19,8 @@ from PIL import ImageFont
 
 from fastapi import FastAPI, Response
 
-# from dotenv import load_dotenv
-# load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 # google api
 def get_google_service(service_account_json:str, api:str='sheets'):
@@ -403,7 +403,11 @@ def get_image(mem_type):
 
 @app.get("/")
 def root():
-    return {'message':'Hello Julia!'}
+    return {
+        'SERVICE_ACCOUNT_JSON':SERVICE_ACCOUNT_JSON,
+        'SPREADSHEET_ID':SPREADSHEET_ID,
+        'JULIA_PHOTOS_FOLDER_ID':JULIA_PHOTOS_FOLDER_ID
+        }
 
 #localstart:
 
