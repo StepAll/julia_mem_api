@@ -403,11 +403,7 @@ def get_image(mem_type):
 
 @app.get("/")
 def root():
-    return {
-        'SERVICE_ACCOUNT_JSON':SERVICE_ACCOUNT_JSON,
-        'SPREADSHEET_ID':SPREADSHEET_ID,
-        'JULIA_PHOTOS_FOLDER_ID':JULIA_PHOTOS_FOLDER_ID
-        }
+    return {'message':'Helloooo, Julia!'}
 
 #localstart:
 
