@@ -425,3 +425,5 @@ def root():
 
 # deploy to Fly.io
 # https://dev.to/denvercoder1/hosting-a-python-discord-bot-for-free-with-flyio-3k19
+# cd julia_mem_api
+# flyctl deploy

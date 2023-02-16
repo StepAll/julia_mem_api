@@ -6,6 +6,8 @@ import textwrap
 import datetime, time
 import math
 
+from typing import Union
+from enum import Enum
 
 import httplib2
 import apiclient.discovery
@@ -17,10 +19,19 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-# from dotenv import load_dotenv
-# load_dotenv()
+
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pydantic import BaseModel
+
+# for local runs
+from dotenv import load_dotenv
+load_dotenv()
+
+
 
 # google api
 def get_google_service(service_account_json:str, api:str='sheets'):
@@ -387,13 +398,42 @@ RESERVED_HEADER_ROWS = 1
 JULIA_PHOTOS_FOLDER_ID = os.getenv('JULIA_MEM_PHOTOS_FOLDER_ID', None)
 
 
-from typing import Union
-from enum import Enum
-from fastapi import Depends, FastAPI
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+
+########################################################################################
+# API
+########################################################################################
+########################################################################################
+# auth
+
+# to get a string like this run:
+# openssl rand -hex 32
+SECRET_KEY = os.getenv('JWT_SECRET_KEY', None)
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# to get hashed password
+# CryptContext(schemes=["bcrypt"], deprecated="auto").hash(password)
+
+users_db = {
+    "solegn": {
+        "username": "solegn",
+        "full_name": "Oleg Stepanov",
+        "email": "solegn@gmail.com",
+        "hashed_password": '$2b$12$LlHVCeY2hHY7eutcV08i5O816gPRjwP98fUDupKt65RL4NvGT2jXm',
+        "disabled": False,
+    }
+}
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Union[str, None] = None
 
 class User(BaseModel):
     username: str
@@ -401,20 +441,90 @@ class User(BaseModel):
     full_name: Union[str, None] = None
     disabled: Union[bool, None] = None
 
-def fake_decode_token(token):
-    return User(
-        username=token + "fakedecoded", email="john@example.com", full_name="John Doe"
-    )
+class UserInDB(User):
+    hashed_password: str
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    user = fake_decode_token(token)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+app = FastAPI()
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+def authenticate_user(user_db, username: str, password: str):
+    user = get_user(user_db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
     return user
 
-@app.get("/users/me")
-async def read_users_me(current_user: User = Depends(get_current_user)):
+def create_access_token(data: dict, expires_delta: Union[datetime.timedelta, None] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    user = get_user(users_db, username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+async def get_current_active_user(current_user: User = Depends(get_current_user)):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+@app.post("/token", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(users_db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = datetime.timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
+@app.get("/users/me")
+async def read_users_me(current_user: User = Depends(get_current_active_user)):
+    return current_user
+
+########################################################################################
+########################################################################################
+########################################################################################
 
 
 
@@ -427,7 +537,7 @@ class MemType(str, Enum):
     responses = {200: {"content": {"image/png": {}}}},
     response_class=Response
     )
-async def get_image(mem_type:MemType, token:str = Depends(oauth2_scheme)):
+async def get_image(mem_type:MemType, token:str = Depends(get_current_active_user)):
     mem = mem_to_api(mem_type=mem_type)
     if mem:
         image_bytes = img2bin(mem)
@@ -436,7 +546,7 @@ async def get_image(mem_type:MemType, token:str = Depends(oauth2_scheme)):
 
 
 @app.get("/")
-def root(token:str = Depends(oauth2_scheme)):
+def root(token:str = Depends(get_current_user)):
     # return {'message':'Helloooo, Julia!'}
     return {'message':token}
 
@@ -445,7 +555,11 @@ def root(token:str = Depends(oauth2_scheme)):
 # docker run --rm -p 8888:8888 -p 8501:8501 -p 8000:8000 -v ${pwd}:/work --name python38jupyter python38jupyter
 # docker exec -it python38jupyter bash
 # cd julia_mem_api
-# uvicorn julia_mem_api token:app --host 0.0.0.0 --port 8000 --reload
+
+# !pip install passlib # hashing passwords
+# !pip install python-jose # for jwt (tokens)
+
+# uvicorn julia_mem_api_token:app --host 0.0.0.0 --port 8000 --reload
 
 
 # deploy on render  with github

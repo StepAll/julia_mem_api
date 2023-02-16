@@ -4,3 +4,6 @@ oauth2client
 Pillow
 fastapi
 uvicorn
+python-jose
+passlib
+
