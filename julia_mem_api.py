@@ -102,7 +102,7 @@ def str_to_datetime(string):
 def get_phrases(only_new=False):
     """
     only_new=True - to show if there are new phrases, else None
-    only_new=Fajse - always to show phrases, even old ones
+    only_new=False - always to show phrases, even old ones
 
     Retrieves a list of dictionaries containing data from a Google Sheets spreadsheet. The data consists of key-value pairs, where the keys are the column names in the spreadsheet and the values are the cell contents in the corresponding row.
     
